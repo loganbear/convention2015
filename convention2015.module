@@ -1,0 +1,89 @@
+<?php
+
+/**
+ * @file
+ * Special customization for DignityUSA Convention 2015 and CiviCRM
+ **/
+
+/**
+ * This hook is called after a db write on some core objects.
+ *
+ * Parameters:
+ * $op - operation being performed with CiviCRM object. Can have the following values:
+ *      'view' : The CiviCRM object is going to be displayed
+ *      'create' : The CiviCRM object is created (or contacts are being added to a group)
+ *      'edit' : The CiviCRM object is edited *      
+ *      'delete' : The CiviCRM object is being deleted (or contacts are being removed from a group)
+ *      'trash': The contact is being moved to trash (Contact objects only)
+ *      'restore': The contact is being restored from trash (Contact objects only)
+ * $objectName - can have the following values:
+ *      'Activity'
+ *      'Address'
+ *      'Case'
+ *      'Contribution'
+ *      'ContributionRecur'
+ *      'CRM_Mailing_DAO_Spool'
+ *      'Email'
+ *      'Event'
+ *      'EntityTag'
+ *      'Individual'
+ *      'Household'
+ *      'Organization'
+ *      'Grant'
+ *      'Group'
+ *      'GroupContact'
+ *      'LineItem'
+ *      'Membership'
+ *      'MembershipPayment'
+ *      'Participant'
+ *      'ParticipantPayment'
+ *      'Phone'
+ *      'Pledge'
+ *      'PledgePayment'
+ *      'Profile' (while this is not really an object, people have expressed an interest to perform an action when a profile is created/edited)
+ *      'Relationship'
+ *      'Tag'
+ *      'UFMatch' (when an object is linked to a CMS user record, at the request of GordonH. A UFMatch object is passed for both the pre and post hooks)
+ *
+ * $objectId - the unique identifier for the object. tagID in case of EntityTag
+ * $objectRef - the reference to the object if available. For case of EntityTag it is an array of (entityTable, entityIDs)
+ *
+ * Returns
+ * None
+ */
+
+function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+    if ( $objectName == 'LineItem' && $op == 'create' ) {
+//        CRM_Core_Error::debug('Line Item', $objectRef);
+//        exit;
+        $field_id = $objectRef['price_field_id'];
+        // Check for Convention Registration
+        if ( ($field_id >= 110) && ( $field_id <= 112) ) {
+            convention2015_newParticipant(66, $objectRef);
+        }
+    }
+}
+
+function convention2015_newParticipant($eventNum, &$LineItem) {
+    $params = array('id' => $LineItem['entity_id'],
+                    'sequential' => 1,
+                    );
+    $result = civicrm_api3('participant', 'getsingle', $params);
+    $newEvent = array('participant_contact_id'      => $result['contact_id'],
+                      'event_id'                    => $eventNum,
+                      'participant_status_id'       => $result['participant_status_id'],
+                      'participant_role_id'         => $result['participant_role_id'],
+                      'participant_register_date'   => $result['participant_register_date'],
+                      'participant_source'          => $result['participant_source'],
+                      'participant_fee_level'       => array($LineItem['label'],),
+                      'participant_is_test'         => $result['participant_is_test'],
+                      'participant_is_pay_later'    => $result['participant_is_pay_later'],
+                      'participant_fee_amount'      => $LineItem['line_total'],
+                      'participant_registered_by_id' => $result['participant_registered_by_id'],
+                      'participant_fee_currency'    => $result['participant_fee_currency'],
+                      'participant_campaign_id'     => $result['participant_campaign_id'],
+                      'sequential'                  => 1,
+                     );
+    $newResult = civicrm_api3('participant', 'create', $newEvent);
+}    
+

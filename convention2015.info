@@ -1,0 +1,8 @@
+; $Id$
+name = Convention2015
+description = Module for hooks into DignityUSA Convention 2015
+;dependencies[] = 
+core = 7.x
+dependencies[] = civicrm
+package = CiviCRM
+
