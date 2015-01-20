@@ -54,8 +54,6 @@
 
 function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
     if ( $objectName == 'LineItem' && $op == 'create' ) {
-//        CRM_Core_Error::debug('Line Item', $objectRef);
-//        exit;
         $field_id = $objectRef['price_field_id'];
         // Check for Convention Registration
         if ( ($field_id >= 110) && ( $field_id <= 112) ) {
@@ -84,6 +82,11 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                       'participant_campaign_id'     => $result['participant_campaign_id'],
                       'sequential'                  => 1,
                      );
-    $newResult = civicrm_api3('participant', 'create', $newEvent);
+    try {
+        $newResult = civicrm_api3('participant', 'create', $newEvent);
+    }
+    catch (CiviCRM_API3_Exception $e) {
+        $error = $e->getMessage();
+    }
 }    
 
