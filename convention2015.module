@@ -54,10 +54,20 @@
 
 function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
     if ( $objectName == 'LineItem' && $op == 'create' ) {
+//        CRM_Core_Error::debug('Line Item', $objectRef);
+//        exit;
         $field_id = $objectRef['price_field_id'];
         // Check for Convention Registration
         if ( ($field_id >= 110) && ( $field_id <= 112) ) {
+            convention2015_newParticipant(65, $objectRef);
+        }
+        // Boat Cruise
+        if ($field_id == 120) {
             convention2015_newParticipant(66, $objectRef);
+        }
+        // Tillicum Village
+        if ( ($field_id == 121) || ($field_id == 122) ) {
+            convention2015_newParticipant(67, $objectRef);
         }
     }
 }
@@ -73,7 +83,7 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                       'participant_role_id'         => $result['participant_role_id'],
                       'participant_register_date'   => $result['participant_register_date'],
                       'participant_source'          => $result['participant_source'],
-                      'participant_fee_level'       => array($LineItem['label'],),
+                      'participant_fee_level'       => $LineItem['label'],
                       'participant_is_test'         => $result['participant_is_test'],
                       'participant_is_pay_later'    => $result['participant_is_pay_later'],
                       'participant_fee_amount'      => $LineItem['line_total'],
@@ -82,11 +92,21 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                       'participant_campaign_id'     => $result['participant_campaign_id'],
                       'sequential'                  => 1,
                      );
-    try {
-        $newResult = civicrm_api3('participant', 'create', $newEvent);
-    }
-    catch (CiviCRM_API3_Exception $e) {
-        $error = $e->getMessage();
-    }
-}    
+    $newResult = civicrm_api3('participant', 'create', $newEvent);
+    
+    $params = array('entity_table'  => 'civicrm_participant',
+                    'entity_id'     => $newResult['id'],
+                    'sequential'    => 1,
+                   );
+    
+    $newLineItem = civicrm_api3('lineItem','getsingle', $params);
+    unset($newLineItem['is_error']);
+    $newLineItem['contribution_id']     = $LineItem['contribution_id'];
+    $newLineItem['financial_type_id']   = $LineItem['financial_type_id'];
+    $newLineItem['qty']                 = $LineItem['qty'];
+    $newLineItem['line_total']          = $LineItem['line_total'];
+    // Update new Participant's Line Item's contribution Id and Financial Type Id
+
+    $newResult = civicrm_api3('lineItem','create',$newLineItem);
+    }    
 
