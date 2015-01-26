@@ -47,16 +47,17 @@
  *
  * $objectId - the unique identifier for the object. tagID in case of EntityTag
  * $objectRef - the reference to the object if available. For case of EntityTag it is an array of (entityTable, entityIDs)
- *
  * Returns
  * None
  */
 
 function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+// LineItems are for participant of individual items    
     if ( $objectName == 'LineItem' && $op == 'create' ) {
 //        CRM_Core_Error::debug('Line Item', $objectRef);
 //        exit;
         $field_id = $objectRef['price_field_id'];
+        $field_value_id = $objectRef['price_field_value_id'];
         // Check for Convention Registration
         if ( ($field_id >= 110) && ( $field_id <= 112) ) {
             convention2015_newParticipant(65, $objectRef);
@@ -69,7 +70,20 @@ function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
         if ( ($field_id == 121) || ($field_id == 122) ) {
             convention2015_newParticipant(67, $objectRef);
         }
+        // One Day Events
+        if ($field_id == 123) {
+            convention2015_newParticipant($field_value_id - 245, $objectRef);
+        }        
     }
+
+// We also have to check to see if there's an participant which is not a pay later check for other
+    if ( $objectName == 'Participant' ) {
+        $dao = &CRM_Core_DAO::executeQuery("UPDATE civicrm_participant p1
+                                            JOIN convention_events e1 ON e1.sub_event_id = p1.id
+                                            SET p1.status_id = " . $participant['status_id']
+                                            . "WHERE e1.primary_event_id = " . $participant['id']);
+    }
+        
 }
 
 function convention2015_newParticipant($eventNum, &$LineItem) {
@@ -94,19 +108,68 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                      );
     $newResult = civicrm_api3('participant', 'create', $newEvent);
     
+    $pmtParams = array('participant_id' => $newResult['id'],
+                       'contribution_id' => $LineItem['contribution_id'],
+                       'sequential' => 1,
+                      );
+    $nextResult = civicrm_api3('participantPayment', 'create', $pmtParams);
+    
+    
+    
+    $dao = &CRM_Core_DAO::executeQuery("INSERT INTO convention_events
+                                       (primary_event_id, sub_event_id)
+                                       VALUES(" . $result['id'] . ", " . $newResult['id'] . ")");
+    
     $params = array('entity_table'  => 'civicrm_participant',
                     'entity_id'     => $newResult['id'],
                     'sequential'    => 1,
                    );
-    
-    $newLineItem = civicrm_api3('lineItem','getsingle', $params);
-    unset($newLineItem['is_error']);
-    $newLineItem['contribution_id']     = $LineItem['contribution_id'];
-    $newLineItem['financial_type_id']   = $LineItem['financial_type_id'];
-    $newLineItem['qty']                 = $LineItem['qty'];
-    $newLineItem['line_total']          = $LineItem['line_total'];
-    // Update new Participant's Line Item's contribution Id and Financial Type Id
-
+    try {
+        $newLineItem = civicrm_api3('lineItem','getsingle', $params);
+        unset($newLineItem['is_error']);
+        $newLineItem['contribution_id']     = $LineItem['contribution_id'];
+        $newLineItem['financial_type_id']   = $LineItem['financial_type_id'];
+        $newLineItem['qty']                 = $LineItem['qty'];
+        $newLineItem['line_total']          = $LineItem['line_total'];
+        $newLineItem['participant_count']   = $LineItem['participant_count'];
+    } catch (Exception $e) {
+        $newLineItem = array(
+                             'price_field_id'       => $eventNum + 138,
+                             'price_field_value_id' => $eventNum + 505,
+                             'contribution_id'      => $LineItem['contribution_id'],
+                             'financial_type_id'    => $LineItem['financial_type_id'],
+                             'qty'                  => $LineItem['qty'],
+                             'line_total'           => $LineItem['line_total'],
+                             'entity_table'         => $LineItem['entity_table'],
+                             'entity_id'            => $eventNum,
+                             'unit_price'           => $LineItem['unit_price'],
+                             'participant_count'    => $LineItem['participant_count'],
+//                             'deductible_amount'    => $LineItem['deductible_amount'],
+                             'label'                => $LineItem['label'],
+                            );
+    } 
     $newResult = civicrm_api3('lineItem','create',$newLineItem);
-    }    
+    
+}    
 
+function convention2015_payup(&$participant) {
+    $dao = &CRM_Core_DAO::executeQuery("SELECT * FROM convention_events WHERE primary_event_id = " . $participant['id']);
+    $dao = &CRM_Core_DAO::executeQuery("UPDATE civicrm_participant p1
+                                       JOIN convention_events e1 ON e1.sub_event_id = p1.id
+                                       SET p1.status_id = 1
+                                       WHERE e1.primary_event_id = " . $participant['id']);
+    while ($dao->fetch()) {
+        $params = array('id'         => $dao->id,
+                        'sequential' => 1,
+                       );
+        try {
+            $newParticipant = civicrm_api3('participant' , 'getsingle', $params);
+            unset($newParticipant['is_error']);
+            $newParticipant['participant_status_id'] = $participant['participant_status_id'];
+            $result = civicrm_api3('participant', 'create', $newParticipant);
+        }
+        catch (Exception $e) {
+        }
+    }
+                  
+}
