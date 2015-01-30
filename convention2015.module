@@ -77,13 +77,14 @@ function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
     }
 
 // We also have to check to see if there's an participant which is not a pay later check for other
+/*
     if ( $objectName == 'Participant' ) {
         $dao = &CRM_Core_DAO::executeQuery("UPDATE civicrm_participant p1
                                             JOIN convention_events e1 ON e1.sub_event_id = p1.id
                                             SET p1.status_id = " . $participant['status_id']
                                             . "WHERE e1.primary_event_id = " . $participant['id']);
     }
-        
+*/        
 }
 
 function convention2015_newParticipant($eventNum, &$LineItem) {
@@ -101,7 +102,7 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                       'participant_is_test'         => $result['participant_is_test'],
                       'participant_is_pay_later'    => $result['participant_is_pay_later'],
                       'participant_fee_amount'      => $LineItem['line_total'],
-                      'participant_registered_by_id' => $result['participant_registered_by_id'],
+//                      'participant_registered_by_id' => $result['participant_registered_by_id'],
                       'participant_fee_currency'    => $result['participant_fee_currency'],
                       'participant_campaign_id'     => $result['participant_campaign_id'],
                       'sequential'                  => 1,
@@ -115,11 +116,11 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
     $nextResult = civicrm_api3('participantPayment', 'create', $pmtParams);
     
     
-    
+/*    
     $dao = &CRM_Core_DAO::executeQuery("INSERT INTO convention_events
                                        (primary_event_id, sub_event_id)
                                        VALUES(" . $result['id'] . ", " . $newResult['id'] . ")");
-    
+*/    
     $params = array('entity_table'  => 'civicrm_participant',
                     'entity_id'     => $newResult['id'],
                     'sequential'    => 1,
@@ -133,9 +134,10 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
         $newLineItem['line_total']          = $LineItem['line_total'];
         $newLineItem['participant_count']   = $LineItem['participant_count'];
     } catch (Exception $e) {
+        
         $newLineItem = array(
-                             'price_field_id'       => $eventNum + 138,
-                             'price_field_value_id' => $eventNum + 505,
+                             'price_field_id'       => $eventNum + 87,
+                             'price_field_value_id' => $eventNum + 339,
                              'contribution_id'      => $LineItem['contribution_id'],
                              'financial_type_id'    => $LineItem['financial_type_id'],
                              'qty'                  => $LineItem['qty'],
