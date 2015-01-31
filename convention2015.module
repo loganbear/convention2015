@@ -52,7 +52,11 @@
  */
 
 function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
-// LineItems are for participant of individual items    
+// LineItems are for participant of individual items
+// $field_id:   110 - 112 - Full Convention Registration
+//              120 - Boat Cruise
+//              121 - 122 - Tillicum Village
+//              123 - One Day Event
     if ( $objectName == 'LineItem' && $op == 'create' ) {
 //        CRM_Core_Error::debug('Line Item', $objectRef);
 //        exit;
@@ -88,6 +92,8 @@ function convention2015_civicrm_post($op, $objectName, $objectId, &$objectRef) {
 }
 
 function convention2015_newParticipant($eventNum, &$LineItem) {
+    // Check to see if there's an array item for line_total
+    
     $params = array('id' => $LineItem['entity_id'],
                     'sequential' => 1,
                     );
@@ -102,7 +108,7 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                       'participant_is_test'         => $result['participant_is_test'],
                       'participant_is_pay_later'    => $result['participant_is_pay_later'],
                       'participant_fee_amount'      => $LineItem['line_total'],
-//                      'participant_registered_by_id' => $result['participant_registered_by_id'],
+                      'participant_registered_by_id' => NULL,
                       'participant_fee_currency'    => $result['participant_fee_currency'],
                       'participant_campaign_id'     => $result['participant_campaign_id'],
                       'sequential'                  => 1,
@@ -115,7 +121,6 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                       );
     $nextResult = civicrm_api3('participantPayment', 'create', $pmtParams);
     
-    
 /*    
     $dao = &CRM_Core_DAO::executeQuery("INSERT INTO convention_events
                                        (primary_event_id, sub_event_id)
@@ -125,6 +130,7 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                     'entity_id'     => $newResult['id'],
                     'sequential'    => 1,
                    );
+/*
     try {
         $newLineItem = civicrm_api3('lineItem','getsingle', $params);
         unset($newLineItem['is_error']);
@@ -134,7 +140,6 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
         $newLineItem['line_total']          = $LineItem['line_total'];
         $newLineItem['participant_count']   = $LineItem['participant_count'];
     } catch (Exception $e) {
-        
         $newLineItem = array(
                              'price_field_id'       => $eventNum + 87,
                              'price_field_value_id' => $eventNum + 339,
@@ -151,7 +156,7 @@ function convention2015_newParticipant($eventNum, &$LineItem) {
                             );
     } 
     $newResult = civicrm_api3('lineItem','create',$newLineItem);
-    
+*/    
 }    
 
 function convention2015_payup(&$participant) {
